@@ -8,7 +8,7 @@ const ticketSchema = new mongoose.Schema({
   eventId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Event",
-    required: true,
+    required: false,
   },
   buyer: {
     type: String,
