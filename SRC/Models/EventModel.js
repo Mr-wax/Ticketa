@@ -9,6 +9,7 @@ const eventCategoryEnum = [
   "Nightlife",
   "Sports & Fitness",
   "Religion",
+  "Tech",
   "Others"
 ];
 
@@ -75,7 +76,7 @@ const eventSchema = new mongoose.Schema(
     },
     aboutEvent: {
       type: String,
-      required: true,
+      required: false,
     },
   },
   { timestamps: true }
