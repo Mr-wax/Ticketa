@@ -5,10 +5,22 @@ import Event from "../Models/EventModel.js";
  */
 export const createEvent = async (req, res) => {
   try {
-    const { eventName, eventCategory, eventDate, eventTime, duration, eventCoverPhotos, refundPolicy, eventDescription, ticketPrice, eventLocation, eventCapacity } = req.body;
+    const { eventName, eventCategory, eventDate, eventTime, duration, refundPolicy, eventDescription, ticketPrice, eventLocation, eventCapacity } = req.body;
 
     if (!eventName || !eventCategory || !eventDate || !eventTime || !eventDescription || !ticketPrice || !eventLocation || !eventCapacity) {
       return res.status(400).json({ message: "All required fields must be filled!" });
+    }
+
+    let eventCoverPhotos = [];
+    
+    // Handle Image Upload to Cloudinary
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "ticketa_events", // Folder in Cloudinary
+        });
+        eventCoverPhotos.push(result.secure_url);
+      }
     }
 
     const event = new Event({

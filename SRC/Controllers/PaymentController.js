@@ -1,9 +1,11 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import Ticket from "../Models/TicketModel.js";
-import { generateAndSendTicket } from "../Controllers/TicketController.js"; //     Use ticket generation after payment verification
+import { generateAndSendTicket } from "../Controllers/TicketController.js"; // Use ticket generation after payment verification
 
 dotenv.config();
+
+const PAYSTACK_SECRET_KEY = "sk_test_8547414d9d966511890bc4ac17560b4c8463ab6c"; // 🔹 Declare Key Directly
 
 /**
  * Initialize Paystack Payment
@@ -22,7 +24,7 @@ export const initializePayment = async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          Authorization: `Bearer ${sk_test_8547414d9d966511890bc4ac17560b4c8463ab6c}`, // ✅ Use Direct Key
           "Content-Type": "application/json",
         },
       }
@@ -48,7 +50,7 @@ export const verifyPayment = async (req, res) => {
 
     const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        Authorization: `Bearer ${sk_test_8547414d9d966511890bc4ac17560b4c8463ab6c}`,
       },
     });
 
