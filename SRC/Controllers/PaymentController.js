@@ -5,7 +5,7 @@ import { generateAndSendTicket } from "../Controllers/TicketController.js"; // U
 
 dotenv.config();
 
-const PAYSTACK_SECRET_KEY = "sk_test_8547414d9d966511890bc4ac17560b4c8463ab6c"; // 🔹 Declare Key Directly
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY; // 🔹 Declare Key Directly
 
 /**
  * Initialize Paystack Payment
@@ -24,7 +24,7 @@ export const initializePayment = async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${sk_test_8547414d9d966511890bc4ac17560b4c8463ab6c}`, // ✅ Use Direct Key
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, // ✅ Use Direct Key
           "Content-Type": "application/json",
         },
       }
@@ -50,7 +50,7 @@ export const verifyPayment = async (req, res) => {
 
     const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: {
-        Authorization: `Bearer ${sk_test_8547414d9d966511890bc4ac17560b4c8463ab6c}`,
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
       },
     });
 

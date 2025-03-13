@@ -4,8 +4,8 @@ import fs from "fs";
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "ponmansukbyen@gmail.com",
-    pass: "krdx mtka qpxy ljuu",
+    user:process.env.EMAIL_USER,
+    pass:process.env.EMAIL_PASSWORD,
   },
 });
 

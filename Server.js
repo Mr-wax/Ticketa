@@ -17,7 +17,7 @@ app.use(bodyParser.urlencoded({extended:true}))
 app.use('/api', router)
 
 const startServer = async () => {
-    const PORT = 5000;
+    const PORT = process.env.PORT;
     // console.log(PORT)
      connectDB();
     try {  

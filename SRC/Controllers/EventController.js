@@ -11,18 +11,26 @@ export const createEvent = async (req, res) => {
       return res.status(400).json({ message: "All required fields must be filled!" });
     }
 
-    let eventCoverPhotos = [];
-    
-    // Handle Image Upload to Cloudinary
+    // 🔹 Log request files to check if multer is working
+    console.log("Uploaded Files:", req.files);
+
+    // 🔹 Upload Images to Cloudinary
+    let uploadedImages = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "ticketa_events", // Folder in Cloudinary
-        });
-        eventCoverPhotos.push(result.secure_url);
+        try {
+          const result = await cloudinary.uploader.upload(file.path, { folder: "ticketa_events" });
+          console.log("Cloudinary Upload Result:", result); // Log Cloudinary response
+          uploadedImages.push(result.secure_url);
+        } catch (error) {
+          console.error("Cloudinary Upload Error:", error);
+        }
       }
+    } else {
+      console.warn("No images found in request.");
     }
 
+    // 🔹 Create Event in Database
     const event = new Event({
       postedBy: req.user._id,
       eventName,
@@ -30,7 +38,7 @@ export const createEvent = async (req, res) => {
       eventDate,
       eventTime,
       duration,
-      eventCoverPhotos,
+      eventCoverPhotos: uploadedImages, // Store image URLs
       refundPolicy,
       eventDescription,
       ticketPrice,
@@ -41,10 +49,10 @@ export const createEvent = async (req, res) => {
     await event.save();
     res.status(201).json({ message: "Event created successfully!", event });
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    console.error("Error creating event:", error);
+    res.status(500).json({ message: error.message });
+  }
 };
-
 /**
  * Get all events hosted by the logged-in user
  */
