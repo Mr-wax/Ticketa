@@ -1,36 +1,49 @@
 import Event from "../Models/EventModel.js";
+import { cloudinary} from "../Middlewares/ImageUpload.js"; // ✅ Correct Import
 
-/**
- * Create a new event (Only for registered users)
- */
 export const createEvent = async (req, res) => {
   try {
-    const { eventName, eventCategory, eventDate, eventTime, duration, refundPolicy, eventDescription, ticketPrice, eventLocation, eventCapacity } = req.body;
+    console.log("🟢 Request received:", req.body);
+    console.log("🟢 Uploaded Files:", req.files);
+
+    const { 
+      eventName, 
+      eventCategory, 
+      eventDate, 
+      eventTime, 
+      duration, 
+      refundPolicy, 
+      eventDescription, 
+      ticketPrice, 
+      eventLocation, 
+      eventCapacity 
+    } = req.body;
 
     if (!eventName || !eventCategory || !eventDate || !eventTime || !eventDescription || !ticketPrice || !eventLocation || !eventCapacity) {
+      console.error("🔴 Missing required fields!");
       return res.status(400).json({ message: "All required fields must be filled!" });
     }
 
-    // 🔹 Log request files to check if multer is working
-    console.log("Uploaded Files:", req.files);
+    if (!req.files || req.files.length === 0) {
+      console.error("🔴 No files uploaded!");
+      return res.status(400).json({ message: "No event cover photos uploaded!" });
+    }
 
     // 🔹 Upload Images to Cloudinary
     let uploadedImages = [];
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        try {
-          const result = await cloudinary.uploader.upload(file.path, { folder: "ticketa_events" });
-          console.log("Cloudinary Upload Result:", result); // Log Cloudinary response
-          uploadedImages.push(result.secure_url);
-        } catch (error) {
-          console.error("Cloudinary Upload Error:", error);
-        }
-      }
-    } else {
-      console.warn("No images found in request.");
+    try {
+      console.log("🟢 Uploading images to Cloudinary...");
+      const uploadPromises = req.files.map(file => cloudinary.uploader.upload(file.path, { folder: "ticketa_events" }));
+      const results = await Promise.all(uploadPromises);
+      uploadedImages = results.map(result => result.secure_url);
+      console.log("🟢 Cloudinary Uploads:", uploadedImages);
+    } catch (uploadError) {
+      console.error("🔴 Cloudinary Upload Error:", uploadError);
+      return res.status(500).json({ message: "Image upload failed!", error: uploadError.message });
     }
 
-    // 🔹 Create Event in Database
+    // 🔹 Save Event to Database
+    console.log("🟢 Saving event to database...");
     const event = new Event({
       postedBy: req.user._id,
       eventName,
@@ -38,7 +51,7 @@ export const createEvent = async (req, res) => {
       eventDate,
       eventTime,
       duration,
-      eventCoverPhotos: uploadedImages, // Store image URLs
+      eventCoverPhotos: uploadedImages,
       refundPolicy,
       eventDescription,
       ticketPrice,
@@ -47,12 +60,15 @@ export const createEvent = async (req, res) => {
     });
 
     await event.save();
+    console.log("✅ Event saved successfully!");
     res.status(201).json({ message: "Event created successfully!", event });
+
   } catch (error) {
-    console.error("Error creating event:", error);
-    res.status(500).json({ message: error.message });
-  }
+    console.error("🔴 Error creating event:", error);
+    res.status(500).json({ message: "Server error. Please try again.", error: error.message });
+  }
 };
+
 /**
  * Get all events hosted by the logged-in user
  */

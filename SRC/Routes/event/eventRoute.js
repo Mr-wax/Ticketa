@@ -1,7 +1,7 @@
 import express from "express";
 import { createEvent, getUserEvents, updateEvent, deleteEvent } from "../../Controllers/EventController.js";
 import protectRoute from "../../Middlewares/ProtectRoute.js"; // Ensure user is logged in
-import upload from "../../Middlewares/CloudinaryUpload.js";
+import { upload } from "../../Middlewares/ImageUpload.js";
 
 const router = express.Router();
 
