@@ -5,10 +5,13 @@ import { sendMail } from "../Utils/Mailer.js";
 import { signUpValidator, signInValidator, formatZodError } from "../Validators/AuthValidator.js";
 
 export const generateToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
-  });
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "30d" });
 };
+
+
+
+
+
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
@@ -44,7 +47,7 @@ export const registerUser = async (req, res) => {
   
   <!-- Header -->
   <div style="text-align: center; background: linear-gradient(135deg, #007bff, #0056b3); padding: 20px; border-radius: 10px 10px 0 0;">
-    <h2 style="color: #fff; margin: 0; font-size: 24px;">Welcome to <span style="color: #ffd700;">Ticketa</span> 🎟️</h2>
+    <h2 style="color: #fff; margin: 0; font-size: 24px;">Welcome to <span style="color: #ffd700;">Tixhub</span> 🎟️</h2>
   </div>
   
   <!-- Body -->
@@ -60,17 +63,17 @@ export const registerUser = async (req, res) => {
 
     <br/>
     <p style="font-size: 14px; color: #777;">Best regards,</p>
-    <p style="font-size: 16px; font-weight: bold; color: #007bff;">Ticketa Team</p>
+    <p style="font-size: 16px; font-weight: bold; color: #007bff;">Tixhub Team</p>
 
     <!-- Footer -->
     <div style="margin-top: 20px; font-size: 12px; color: #aaa; text-align: center;">
-      <p>&copy; 2025 Ticketa. All rights reserved.</p>
+      <p>&copy; 2025 Tixhub. All rights reserved.</p>
     </div>
   </div>
 </div>
  `;
 
-    await sendMail(email, "Verify Your Account - Ticketa", emailTemplate);
+    await sendMail(email, "Verify Your Account - Tixhub", emailTemplate);
 
     res.status(201).json({ message: "User registered successfully. Check your email for OTP." });
   } catch (error) {
@@ -136,7 +139,7 @@ export const resendOTP = async (req, res) => {
         
         <!-- Header -->
         <div style="text-align: center; background: linear-gradient(135deg, #007bff, #0056b3); padding: 20px; border-radius: 10px 10px 0 0;">
-          <h2 style="color: #fff; margin: 0; font-size: 24px;">Ticketa - OTP Resend 🎟️</h2>
+          <h2 style="color: #fff; margin: 0; font-size: 24px;">Tixhub - OTP Resend 🎟️</h2>
         </div>
 
         <!-- Body -->
@@ -152,11 +155,11 @@ export const resendOTP = async (req, res) => {
 
           <br/>
           <p style="font-size: 14px; color: #777;">Best regards,</p>
-          <p style="font-size: 16px; font-weight: bold; color: #007bff;">Ticketa Team</p>
+          <p style="font-size: 16px; font-weight: bold; color: #007bff;">Tixhub Team</p>
 
           <!-- Footer -->
           <div style="margin-top: 20px; font-size: 12px; color: #aaa; text-align: center;">
-            <p>&copy; 2025 Ticketa. All rights reserved.</p>
+            <p>&copy; 2025 Tixhub. All rights reserved.</p>
           </div>
         </div>
       </div>
@@ -228,7 +231,7 @@ export const forgotPassword = async (req, res) => {
         <p>This link is valid for 1 hour.</p>
       </div>
     `;
-    await sendMail(email, "Ticketa - Reset Your Password", emailTemplate);
+    await sendMail(email, "Tixhub - Reset Your Password", emailTemplate);
 
     res.status(200).json({ message: "Password reset link sent to email." });
   } catch (error) {

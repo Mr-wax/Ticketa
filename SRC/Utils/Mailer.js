@@ -4,7 +4,7 @@ import fs from "fs";
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user:process.env.EMAIL_USER,
+    user:process.env.EMAIL_USERNAME,
     pass:process.env.EMAIL_PASSWORD,
   },
 });
@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
 export const sendMail = async (to, subject, message) => {
   try {
     await transporter.sendMail({
-      from: `"Ticketa" <ponmansukbyen@gmail.com>`, // Ensure this matches the transporter user
+      from: `"Tixhub" <ponmansukbyen@gmail.com>`, // Ensure this matches the transporter user
       to,
       subject,
       html: message, // Ensure this is 'html' and not 'text'
@@ -56,7 +56,7 @@ export const sendMailWithAttachment = async (email, subject, text, filePath) => 
     `;
 
     const mailOptions = {
-      from: `"Ticketa" <${process.env.EMAIL_USER}>`,
+      from: `"Tixhub" <${process.env.EMAIL_USERNAME}>`,
       to: email,
       subject,
       html: htmlContent,

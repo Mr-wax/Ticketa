@@ -1,59 +1,44 @@
 import User from "../Models/UserModel.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 dotenv.config();
 
 export const protectRoute = async (req, res, next) => {
   try {
-    if (!jwt) {
-      throw new Error("jsonwebtoken module is not defined.");
-    }
-
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const token = authHeader.split(" ")[1];
+    const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
-
-    if (!process.env.JWT_SECRET) {
-      throw new Error("JWT_SECRET environment variable is not defined.");
-    }
-
-    console.log("Token received:", token);
-
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  
+    console.log("Decoded Token:", decoded);
 
-    console.log("Decoded token:", decoded);
+    // Ensure the ID is in ObjectId format
+    const user = await User.findById(new mongoose.Types.ObjectId(decoded.id));
 
-    const user = await User.findById(decoded.userId).select("-password");
+    console.log("User Found:", user);
 
     if (!user) {
-      throw new Error("User not found.");
+      return res.status(404).json({ message: "User not found" });
     }
 
     req.user = user;
-
     next();
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-    console.error("Error in protectRoute:", err);
+  } catch (error) {
+    console.error("Error in protectRoute:", error);
+    res.status(401).json({ message: "Unauthorized", error: error.message });
   }
-}; 
+};
+
+// Admin-Only Middleware
 export const adminOnly = (req, res, next) => {
   if (req.user && req.user.role === "admin") {
     next();
   } else {
-    res.status(403).json({ message: "Access denied. Admins only" });
+    res.status(403).json({ message: "Access denied. Admins only." });
   }
 };
-
 
 export default protectRoute;
