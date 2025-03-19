@@ -28,6 +28,10 @@ export const createEvent = async (req, res) => {
       console.error("🔴 No files uploaded!");
       return res.status(400).json({ message: "No event cover photos uploaded!" });
     }
+    
+    if (!req.files || req.files.length === 0) {
+  return res.status(400).json({ message: "No event cover photos uploaded!" });
+    }
 
     // 🔹 Upload Images to Cloudinary
     let uploadedImages = [];

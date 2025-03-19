@@ -203,3 +203,96 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+// Request Password Reset
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    // Generate Reset Token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpiry = Date.now() + 3600000; // 1 hour expiry
+    await user.save();
+
+    // Send Email with Reset Link
+    const resetLink = `https://ticketa.com/reset-password?token=${resetToken}`;
+    const emailTemplate = `
+      <div>
+        <h2>Password Reset Request</h2>
+        <p>Click the link below to reset your password:</p>
+        <a href="${resetLink}" style="color: blue;">Reset Password</a>
+        <p>This link is valid for 1 hour.</p>
+      </div>
+    `;
+    await sendMail(email, "Ticketa - Reset Your Password", emailTemplate);
+
+    res.status(200).json({ message: "Password reset link sent to email." });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Reset Password
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpiry: { $gt: Date.now() } });
+    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+
+    // Hash new password and update user
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpiry = null;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully." });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.userId; // Extracted from the authenticated user
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if current password is correct
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect current password" });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Error updating password:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+export const logoutUser = async (req, res) => {
+  try {
+    // If using cookies, clear the JWT
+    res.clearCookie("token");
+
+    // Optionally, invalidate token by adding it to a blacklist (Redis, DB)
+    // Example: Store the token in a blacklist (optional)
+
+    res.status(200).json({ message: "User logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Logout failed", error: error.message });
+  }
+};
+
