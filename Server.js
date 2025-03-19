@@ -21,7 +21,7 @@ const startServer = async () => {
     // console.log(PORT)
      connectDB();
     try {  
-    app.listen(PORT, () => {console.log (`TICKETA APP IS RUNNING ON PORT ${PORT}`);})
+    app.listen(PORT, () => {console.log (`TIXHUB APP IS RUNNING ON PORT ${PORT}`);})
     } catch (error) {
         console.log(error);
     }

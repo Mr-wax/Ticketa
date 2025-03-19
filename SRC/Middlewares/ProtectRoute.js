@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
 
-const protectRoute = async (req, res, next) => {
+export const protectRoute = async (req, res, next) => {
   try {
     if (!jwt) {
       throw new Error("jsonwebtoken module is not defined.");
@@ -46,6 +46,14 @@ const protectRoute = async (req, res, next) => {
     res.status(500).json({ message: err.message });
     console.error("Error in protectRoute:", err);
   }
+}; 
+export const adminOnly = (req, res, next) => {
+  if (req.user && req.user.role === "admin") {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied. Admins only" });
+  }
 };
+
 
 export default protectRoute;

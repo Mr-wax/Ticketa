@@ -4,10 +4,11 @@ import bcrypt from "bcryptjs";
 import { sendMail } from "../Utils/Mailer.js";
 import { signUpValidator, signInValidator, formatZodError } from "../Validators/AuthValidator.js";
 
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "30d" });
+export const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+    expiresIn: "30d",
+  });
 };
-
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
@@ -196,8 +197,9 @@ export const loginUser = async (req, res) => {
       lastname: user.lastname,
       email: user.email,
       phoneNumber: user.phoneNumber,
+      role: user.role, // Send the user role
       isVerified: user.isVerified,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.role), // Include role in the token
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
