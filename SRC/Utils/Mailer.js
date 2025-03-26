@@ -43,14 +43,7 @@ export const sendMailWithAttachment = async (email, subject, text, filePath) => 
         <div style="max-width: 600px; background: #fff; padding: 20px; margin: auto; border-radius: 8px; box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);">
           <h2 style="color: #007BFF; text-align: center;">🎟️ Your Ticket is Ready!</h2>
           <p style="color: #333; font-size: 16px;">Hello,</p>
-          <p style="color: #333; font-size: 16px;">Thank you for purchasing your event ticket. Your ticket is attached as a PDF.</p>
-          <p style="color: #333; font-size: 16px;">Event: <strong>Sample Event Name</strong></p>
-          <p style="color: #333; font-size: 16px;">Date: <strong>Sample Date</strong></p>
-          <p style="color: #333; font-size: 16px;">Location: <strong>Sample Venue</strong></p>
-          <div style="text-align: center;">
-            <a href="#" style="display: inline-block; background: #007BFF; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-size: 16px; margin-top: 10px;">View Event Details</a>
-          </div>
-          <p style="text-align: center; font-size: 14px; color: #888; margin-top: 20px;">Need help? <a href="#" style="color: #007BFF; text-decoration: none;">Contact Support</a></p>
+          <p style="color: #333; font-size: 16px;">Thank you for purchasing your event ticket. Your ticket is attached as a PDF. Please bring this ticket to the event for verification</p>
         </div>
       </div>
     `;

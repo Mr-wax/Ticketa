@@ -19,25 +19,31 @@ export const createEvent = async (req, res) => {
       eventCapacity 
     } = req.body;
 
+    // 🔹 Validate Required Fields
     if (!eventName || !eventCategory || !eventDate || !eventTime || !eventDescription || !ticketPrice || !eventLocation || !eventCapacity) {
       console.error("🔴 Missing required fields!");
       return res.status(400).json({ message: "All required fields must be filled!" });
     }
 
+    // 🔹 Ensure User is Authenticated
+    if (!req.user || !req.user.userId) {
+      console.error("🔴 Unauthorized: User not found!");
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
+    }
+
+    // 🔹 Validate File Uploads
     if (!req.files || req.files.length === 0) {
       console.error("🔴 No files uploaded!");
       return res.status(400).json({ message: "No event cover photos uploaded!" });
-    }
-    
-    if (!req.files || req.files.length === 0) {
-  return res.status(400).json({ message: "No event cover photos uploaded!" });
     }
 
     // 🔹 Upload Images to Cloudinary
     let uploadedImages = [];
     try {
       console.log("🟢 Uploading images to Cloudinary...");
-      const uploadPromises = req.files.map(file => cloudinary.uploader.upload(file.path, { folder: "ticketa_events" }));
+      const uploadPromises = req.files.map(file => 
+        cloudinary.uploader.upload(file.path, { folder: "tixhub_events" })
+      );
       const results = await Promise.all(uploadPromises);
       uploadedImages = results.map(result => result.secure_url);
       console.log("🟢 Cloudinary Uploads:", uploadedImages);
@@ -49,7 +55,7 @@ export const createEvent = async (req, res) => {
     // 🔹 Save Event to Database
     console.log("🟢 Saving event to database...");
     const event = new Event({
-      postedBy: req.user._id,
+      postedBy: req.user.userId, // ✅ Use correct user ID
       eventName,
       eventCategory,
       eventDate,
@@ -73,17 +79,29 @@ export const createEvent = async (req, res) => {
   }
 };
 
+
 /**
  * Get all events hosted by the logged-in user
  */
 export const getUserEvents = async (req, res) => {
   try {
     const events = await Event.find({ postedBy: req.user._id });
-    res.status(200).json(events);
+    const eventCount = events.length;
+
+    if (eventCount === 0) {
+      return res.status(200).json({ message: "You have no events yet.", totalEvents: 0, events: [] });
+    }
+
+    res.status(200).json({
+      message: `You have ${eventCount} event${eventCount > 1 ? "s" : ""}.`,
+      totalEvents: eventCount,
+      events,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "An error occurred while fetching events.", error: error.message });
   }
 };
+
 
 /**
  * Update an event (Only the creator can update)

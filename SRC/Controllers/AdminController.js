@@ -4,12 +4,17 @@ import Event from "../Models/EventModel.js";
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
-    res.status(200).json(users);
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied. Admins only!" });
+    }
+
+    const users = await User.find({});
+    res.status(200).json({ count: users.length, users });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 export const getUserById = async (req, res) => {
     try {
       const { id } = req.params;
@@ -30,11 +35,18 @@ export const getUserById = async (req, res) => {
 export const getAllEvents = async (req, res) => {
   try {
     const events = await Event.find();
-    res.status(200).json(events);
+    const totalEvents = events.length;
+
+    res.status(200).json({
+      message: `Fetched ${totalEvents} event(s) successfully.`,
+      totalEvents,
+      events,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Server error. Please try again.", error: error.message });
   }
 };
+
 
 // Delete a user
 export const deleteUser = async (req, res) => {

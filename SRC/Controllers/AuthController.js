@@ -1,14 +1,9 @@
 import User from "../Models/UserModel.js";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
+import generateTokenAndSetCookie from "../Utils/generateTokenAndSetCookies.js";
+import crypto from "crypto";
 import { sendMail } from "../Utils/Mailer.js";
 import { signUpValidator, signInValidator, formatZodError } from "../Validators/AuthValidator.js";
-
-export const generateToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "30d" });
-};
-
-
 
 
 
@@ -16,22 +11,32 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+
 export const registerUser = async (req, res) => {
+  // Validate request body using Zod
+  const registerResults = signUpValidator.safeParse(req.body);
+  if (!registerResults.success) {
+    return res.status(400).json(formatZodError(registerResults.error.issues));
+  }
+
   try {
-    const validation = signUpValidator.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ errors: formatZodError(validation.error.issues) });
+    const { firstname, lastname, email, password, phoneNumber } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: "User already exists" });
     }
 
-    const { firstname, lastname, email, password, phoneNumber } = validation.data;
-    const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: "User already exists" });
+    // Hash the password using crypto
+    const hashedPassword = crypto.createHash("sha256").update(password).digest("hex");
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Generate OTP and expiration time
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
-    const user = await User.create({
+    // Create new user
+    const newUser = new User({
       firstname,
       lastname,
       email,
@@ -39,9 +44,13 @@ export const registerUser = async (req, res) => {
       phoneNumber,
       otp,
       otpExpiry,
+      isVerified: false, // Ensures verification is required
     });
 
-    // Use a well-styled email template with the OTP displayed
+    await newUser.save();
+    console.log("User registered successfully:", newUser);
+
+    // Email template
     const emailTemplate = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border-radius: 10px; background-color: #f4f4f4;">
   
@@ -73,11 +82,14 @@ export const registerUser = async (req, res) => {
 </div>
  `;
 
+    // Send verification email
     await sendMail(email, "Verify Your Account - Tixhub", emailTemplate);
 
-    res.status(201).json({ message: "User registered successfully. Check your email for OTP." });
+
+    res.status(200).json({ message: "User registered successfully. Check your email for OTP.", user: newUser });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Internal server error", error: error.message });
+    console.log("INTERNAL SERVER ERROR:", error.message);
   }
 };
 
@@ -176,107 +188,153 @@ export const resendOTP = async (req, res) => {
 };
 
 export const loginUser = async (req, res) => {
-  try {
-    const validation = signInValidator.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ errors: formatZodError(validation.error.issues) });
-    }
+  const validation = signInValidator.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json(formatZodError(validation.error.issues));
+  }
 
+  try {
     const { email, password } = validation.data;
     const user = await User.findOne({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(400).json({ message: "Invalid email or password" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Hash the provided password using crypto (assuming SHA-256)
+    const hashedPassword = crypto.createHash("sha256").update(password).digest("hex");
+
+    console.log("Provided password:", password);
+    console.log("Hashed provided password:", hashedPassword);
+    console.log("Stored hashed password:", user.password);
+
+    // Compare hashed passwords
+    const isPasswordValid = user.password === hashedPassword;
+    console.log("Password validation result:", isPasswordValid);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Incorrect password" });
     }
 
     if (!user.isVerified) {
       return res.status(400).json({ message: "Please verify your email first" });
     }
 
+    // Generate token and set cookie
+    const accessToken = generateTokenAndSetCookie(user._id, res);
+
     res.status(200).json({
       message: "User logged in successfully",
-      _id: user._id,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      role: user.role, // Send the user role
-      isVerified: user.isVerified,
-      token: generateToken(user._id, user.role), // Include role in the token
+      accessToken,
+      user,
     });
+
+    console.log("User logged in successfully:", user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Internal server error", error: error.message });
+    console.log("INTERNAL SERVER ERROR:", error.message);
   }
 };
 // Request Password Reset
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User not found" });
 
-    // Generate Reset Token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpiry = Date.now() + 3600000; // 1 hour expiry
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate OTP for password reset
+    const resetOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = resetOTP;
+    user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
     await user.save();
 
-    // Send Email with Reset Link
-    const resetLink = `https://ticketa.com/reset-password?token=${resetToken}`;
-    const emailTemplate = `
-      <div>
-        <h2>Password Reset Request</h2>
-        <p>Click the link below to reset your password:</p>
-        <a href="${resetLink}" style="color: blue;">Reset Password</a>
-        <p>This link is valid for 1 hour.</p>
+    // Email template for password reset
+    const resetEmailTemplate = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border-radius: 10px; background-color: #f4f4f4;">
+        <div style="text-align: center; background: linear-gradient(135deg, #007bff, #0056b3); padding: 20px; border-radius: 10px 10px 0 0;">
+          <h2 style="color: #fff; margin: 0;">Password Reset Request</h2>
+        </div>
+        <div style="padding: 20px; background-color: #fff; border-radius: 0 0 10px 10px; text-align: center;">
+          <p style="font-size: 16px; color: #333;">You requested a password reset. Use the OTP below to reset your password.</p>
+          <div style="font-size: 26px; font-weight: bold; color: #007bff; background-color: #f8f9fa; padding: 15px; border-radius: 8px; display: inline-block; margin: 20px auto; border: 2px dashed #007bff;">
+            ${resetOTP}
+          </div>
+          <p style="font-size: 14px; color: #555;">This OTP is valid for <strong>5 minutes</strong>. If you did not request this, please ignore this email.</p>
+          <p style="font-size: 14px; color: #777;">Best regards,</p>
+          <p style="font-size: 16px; font-weight: bold; color: #007bff;">Tixhub Team</p>
+        </div>
       </div>
     `;
-    await sendMail(email, "Tixhub - Reset Your Password", emailTemplate);
 
-    res.status(200).json({ message: "Password reset link sent to email." });
+    // Send OTP via email
+    await sendMail(email, "Password Reset - Tixhub", resetEmailTemplate);
+
+    res.status(200).json({ message: "OTP sent to your email for password reset." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error sending password reset OTP:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
 // Reset Password
 export const resetPassword = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-    const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpiry: { $gt: Date.now() } });
-    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+    const { email, otp, newPassword } = req.body;
 
-    // Hash new password and update user
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.resetPasswordToken = null;
-    user.resetPasswordExpiry = null;
-    await user.save();
-
-    res.status(200).json({ message: "Password reset successfully." });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const updatePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    const userId = req.user.userId; // Extracted from the authenticated user
-
-    const user = await User.findById(userId);
+    // Find user by email
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if current password is correct
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
+    // Check if OTP is valid
+    if (user.otp !== otp || new Date() > user.otpExpiry) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // Hash the new password using crypto
+    const hashedPassword = crypto.createHash("sha256").update(newPassword).digest("hex");
+
+    // Update user's password and clear OTP
+    user.password = hashedPassword;
+    user.otp = null;
+    user.otpExpiry = null;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successful. You can now log in." });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+export const updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.userId; // Extracted from the authenticated user
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+    
+    const user = await User.findById(new mongoose.Types.ObjectId(userId));;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Hash the current password for comparison
+    const hashedCurrentPassword = crypto.createHash("sha256").update(currentPassword).digest("hex");
+
+    // Check if the provided current password is correct
+    if (user.password !== hashedCurrentPassword) {
       return res.status(400).json({ message: "Incorrect current password" });
     }
 
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
+    // Hash the new password before updating
+    const hashedNewPassword = crypto.createHash("sha256").update(newPassword).digest("hex");
+    user.password = hashedNewPassword;
     await user.save();
 
     res.status(200).json({ message: "Password updated successfully" });
@@ -286,18 +344,8 @@ export const updatePassword = async (req, res) => {
   }
 };
 
-
-export const logoutUser = async (req, res) => {
-  try {
-    // If using cookies, clear the JWT
-    res.clearCookie("token");
-
-    // Optionally, invalidate token by adding it to a blacklist (Redis, DB)
-    // Example: Store the token in a blacklist (optional)
-
-    res.status(200).json({ message: "User logged out successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Logout failed", error: error.message });
-  }
+export const logoutUser = (req, res) => {
+  res.clearCookie('token'); 
+  res.status(200).json({ message: 'User logged out successfully' });
 };
 

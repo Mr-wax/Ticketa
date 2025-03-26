@@ -9,8 +9,7 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY; // 🔹 Declare Key
 
 /**
  * Initialize Paystack Payment
- */
-export const initializePayment = async (req, res) => {
+ */export const initializePayment = async (req, res) => {
   try {
     const { email, amount, event, buyer, phoneNumber, ticketType, date, time } = req.body;
 
@@ -21,10 +20,19 @@ export const initializePayment = async (req, res) => {
         amount: amount * 100, // Convert to kobo
         currency: "NGN",
         callback_url: `http://localhost:5000/api/payments/verify`,
+        metadata: {  // ✅ Ensure metadata is correctly structured
+          email,
+          event,
+          buyer,
+          phoneNumber,
+          ticketType,
+          date,
+          time,
+        }
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, // ✅ Use Direct Key
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, // ✅ Ensure correct secret key
           "Content-Type": "application/json",
         },
       }
@@ -41,6 +49,7 @@ export const initializePayment = async (req, res) => {
   }
 };
 
+
 /**
  * Verify Paystack Payment
  */
@@ -55,29 +64,34 @@ export const verifyPayment = async (req, res) => {
     });
 
     const paymentData = response.data.data;
+    console.log("✅ Paystack Response Data:", paymentData); // Debugging
 
     if (paymentData.status === "success") {
-      const { email, amount, metadata } = paymentData;
+      const metadata = paymentData.metadata;
 
-      // Create and send ticket since payment is successful
-      await generateAndSendTicket({
-        body: {
-          email,
-          event: metadata.event,
-          buyer: metadata.buyer,
-          phoneNumber: metadata.phoneNumber,
-          ticketType: metadata.ticketType,
-          date: metadata.date,
-          time: metadata.time,
-        },
-      });
+      if (!metadata) {
+        console.error("❌ Metadata is missing in Paystack response");
+        return res.status(400).json({ message: "Payment metadata is missing. Cannot generate ticket." });
+      }
 
-      return res.status(200).json({ message: "Payment verified & ticket sent!" });
+      const { email, event, buyer, phoneNumber, ticketType, date, time } = metadata;
+
+      if (!email) {
+        console.error("❌ Email is missing in metadata");
+        return res.status(400).json({ message: "Email is required to generate a ticket" });
+      }
+
+      // ✅ Pass res to ensure response is sent correctly
+      await generateAndSendTicket(
+        { body: { email, event, buyer, phoneNumber, ticketType, date, time } },
+        res
+      );
+
     } else {
       return res.status(400).json({ message: "Payment verification failed" });
     }
   } catch (error) {
-    console.error("Error verifying payment:", error.response?.data || error.message);
+    console.error("❌ Error verifying payment:", error.response?.data || error.message);
     res.status(500).json({ message: "Payment verification failed" });
   }
 };
